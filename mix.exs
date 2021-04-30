@@ -66,6 +66,7 @@ defmodule Crawly.Mixfile do
       {:elixir_uuid, "~> 1.2"},
       {:poison, "~> 3.1"},
       {:gollum, "~> 0.4.0", hex: :new_gollum},
+      {:erbloom, "~> 2.1.0-rc.2"},
       {:plug_cowboy, "~> 2.0"},
       {:epipe, "~> 1.0"},
       {:credo, "~> 1.5.0", only: [:dev, :test], runtime: false},
