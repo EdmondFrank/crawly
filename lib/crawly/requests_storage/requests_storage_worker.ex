@@ -13,15 +13,19 @@ defmodule Crawly.RequestsStorage.Worker do
 
   use GenServer
 
-  defstruct requests: [], count: 0, spider_name: nil, crawl_id: nil
+  defstruct requests: nil, count: 0, spider_name: nil, crawl_id: nil
 
   alias Crawly.RequestsStorage.Worker
 
   @doc """
   Store individual request or multiple requests
   """
-  @spec store(Crawly.spider(), Crawly.Request.t() | [Crawly.Request.t()]) :: :ok
-  def store(pid, %Crawly.Request{} = request), do: store(pid, [request])
+  @spec store(Crawly.spider(), Crawly.Request.t() | Qex.t()) :: :ok
+  def store(pid, %Crawly.Request{} = request), do: do_call(pid, {:store, request})
+
+  def store(pid, %Qex{} = requests) do
+    do_call(pid, {:store, requests})
+  end
 
   def store(pid, requests) when is_list(requests) do
     do_call(pid, {:store, requests})
@@ -60,7 +64,13 @@ defmodule Crawly.RequestsStorage.Worker do
       "Starting requests storage worker for #{inspect(spider_name)}..."
     )
 
-    {:ok, %Worker{requests: [], spider_name: spider_name, crawl_id: crawl_id}}
+    {:ok, %Worker{requests: Qex.new, spider_name: spider_name, crawl_id: crawl_id}}
+  end
+
+  # Store the given request
+  def handle_call({:store, %Crawly.Request{} = request}, _from, state) do
+    new_state = pipe_request(request, state)
+    {:reply, :ok, new_state}
   end
 
   # Store the given requests
@@ -74,10 +84,9 @@ defmodule Crawly.RequestsStorage.Worker do
     %Worker{requests: requests, count: cnt} = state
 
     {request, rest, new_cnt} =
-      case requests do
-        [] -> {nil, [], 0}
-        [request] -> {request, [], 0}
-        [request | rest] -> {request, rest, cnt - 1}
+      case Qex.pop(requests) do
+        {:empty, _} -> {nil, requests, 0}
+        {{:value, request}, rest} -> {request, rest, cnt - 1}
       end
 
     {:reply, request, %Worker{state | requests: rest, count: new_cnt}}
@@ -108,7 +117,7 @@ defmodule Crawly.RequestsStorage.Worker do
         %{
           new_state
           | count: state.count + 1,
-            requests: [new_request | state.requests]
+            requests: Qex.push_front(state.requests, new_request)
         }
     end
   end

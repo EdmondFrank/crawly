@@ -46,6 +46,7 @@ defmodule Crawly.Mixfile do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
+      {:qex, "~> 0.5"},
       {:httpoison, "~> 1.7"},
       {:elixir_uuid, "~> 1.2"},
       {:poison, "~> 3.1"},

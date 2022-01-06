@@ -40,7 +40,7 @@ defmodule Crawly.RequestsStorage do
   @spec store(Crawly.spider(), Crawly.Request.t() | [Crawly.Request.t()]) ::
           :ok | {:error, :storage_worker_not_running}
   def store(spider_name, %Crawly.Request{} = request),
-    do: GenServer.call(__MODULE__, {:store, {spider_name, [request]}})
+    do: GenServer.call(__MODULE__, {:store, {spider_name, request}})
 
   def store(spider_name, requests) when is_list(requests) do
     requests
