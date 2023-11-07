@@ -13,7 +13,7 @@ defmodule Crawly.RequestsStorage.Worker do
 
   use GenServer
 
-  defstruct requests: nil, count: 0, spider_name: nil, crawl_id: nil
+  defstruct requests: nil, count: 0, working: 0, spider_name: nil, crawl_id: nil
 
   alias Crawly.RequestsStorage.Worker
 
@@ -40,6 +40,22 @@ defmodule Crawly.RequestsStorage.Worker do
   end
 
   @doc """
+  Increase working requests count
+  """
+  @spec inc(pid()) :: non_neg_integer()
+  def inc(pid) do
+    do_call(pid, :inc)
+  end
+
+  @doc """
+  Decrease working requests count
+  """
+  @spec dec(pid()) :: non_neg_integer()
+  def dec(pid) do
+    do_call(pid, :dec)
+  end
+
+  @doc """
   Get statistics from the requests storage
   """
   @spec stats(pid()) :: {:stored_requests, non_neg_integer()}
@@ -52,6 +68,14 @@ defmodule Crawly.RequestsStorage.Worker do
   """
   @spec requests(pid()) :: {:requests, [Crawly.Request.t()]}
   def requests(pid), do: do_call(pid, :requests)
+
+  @doc """
+  Get working requests count from the requests storage
+  """
+  @spec working_stats(pid()) :: {:working_requests, non_neg_integer()}
+  def working_stats(pid) do
+    do_call(pid, :working_stats)
+  end
 
   def start_link(spider_name, crawl_id) do
     GenServer.start_link(__MODULE__, [spider_name, crawl_id])
@@ -92,12 +116,30 @@ defmodule Crawly.RequestsStorage.Worker do
     {:reply, request, %Worker{state | requests: rest, count: new_cnt}}
   end
 
+  # Increase current working requests count
+  def handle_call(:inc, _from, state) do
+    new_working = state.working + 1
+
+    {:reply, new_working, %Worker{state | working: new_working}}
+  end
+
+  # Decrease current working requests count
+  def handle_call(:dec, _from, state) do
+    new_working = if state.working > 0, do: state.working - 1, else: 0
+
+    {:reply, new_working, %Worker{state | working: new_working}}
+  end
+
   def handle_call(:stats, _from, state) do
     {:reply, {:stored_requests, state.count}, state}
   end
 
   def handle_call(:requests, _from, state) do
     {:reply, {:requests, state.requests}, state}
+  end
+
+  def handle_call(:working_stats, _from, state) do
+    {:reply, {:working_requests, state.working}, state}
   end
 
   defp do_call(pid, command) do

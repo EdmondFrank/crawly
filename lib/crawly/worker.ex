@@ -44,6 +44,7 @@ defmodule Crawly.Worker do
 
         request ->
           # Process the request
+          Crawly.RequestsStorage.inc(spider_name)
 
           with {:ok, response} <- get_response({request, spider_name}),
                {:ok, parsed_item} <- parse_item(response),
@@ -55,6 +56,8 @@ defmodule Crawly.Worker do
                 "Crawly worker could not process the request to #{inspect(request.url)} reason: #{inspect(reason)}"
               )
           end
+
+          Crawly.RequestsStorage.dec(spider_name)
 
           @default_backoff
       end

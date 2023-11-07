@@ -172,14 +172,19 @@ defmodule Crawly.Manager do
     {:stored_requests, requests_count} =
       Crawly.RequestsStorage.stats(state.name)
 
+    {:working_requests, working_count} =
+      Crawly.RequestsStorage.working_stats(state.name)
+
     delta = items_count - state.prev_scraped_cnt
 
     Logger.info("Current crawl speed is: #{delta} items/min")
-    Logger.info("Current requests count is: #{requests_count}")
+    Logger.info("Current stored requests count is: #{requests_count}")
+    Logger.info("Current crawling requests count is: #{working_count}")
 
     stop_spider_by_requests_count_and_delta(
       state.name,
       requests_count,
+      working_count,
       delta
     )
 
@@ -209,15 +214,16 @@ defmodule Crawly.Manager do
   defp stop_spider_by_requests_count_and_delta(
          spider_name,
          requests_count,
+         working_count,
          delta
        )
-       when requests_count == 0 and delta == 0 do
+       when requests_count == 0 and delta == 0 and working_count == 0 do
     Logger.info("Stopping #{inspect(spider_name)}, all requests handled")
 
     Crawly.Engine.stop_spider(spider_name, :spider_finished)
   end
 
-  defp stop_spider_by_requests_count_and_delta(_, _, _), do: :ok
+  defp stop_spider_by_requests_count_and_delta(_, _, _, _), do: :ok
 
   defp maybe_stop_spider_by_itemcount_limit(
          spider_name,

@@ -63,6 +63,22 @@ defmodule Crawly.RequestsStorage do
   end
 
   @doc """
+  Increase working requests count of requests storage
+  """
+  @spec inc(Crawly.spider()) :: non_neg_integer() | {:error, :storage_worker_not_running}
+  def inc(spider_name) do
+    GenServer.call(__MODULE__, {:inc, spider_name})
+  end
+
+  @doc """
+  Decrease working requests count of requests storage
+  """
+  @spec dec(Crawly.spider()) :: non_neg_integer() | {:error, :storage_worker_not_running}
+  def dec(spider_name) do
+    GenServer.call(__MODULE__, {:dec, spider_name})
+  end
+
+  @doc """
   Get statistics from the requests storage
   """
   @spec stats(Crawly.spider()) ::
@@ -76,6 +92,16 @@ defmodule Crawly.RequestsStorage do
           {:requests, [Crawly.Request.t()]} | {:error, :spider_not_running}
   def requests(spider_name) do
     GenServer.call(__MODULE__, {:requests, spider_name})
+  end
+
+  @doc """
+  Get working requests count from the requests storage
+  """
+  @spec working_stats(Crawly.spider()) ::
+          {:working_requests, non_neg_integer()}
+          | {:error, :storage_worker_not_running}
+  def working_stats(spider_name) do
+    GenServer.call(__MODULE__, {:working_stats, spider_name})
   end
 
   @doc """
@@ -123,6 +149,32 @@ defmodule Crawly.RequestsStorage do
     {:reply, resp, state}
   end
 
+  def handle_call({:inc, spider_name}, _from, state = %{workers: workers}) do
+    resp =
+      case Map.get(workers, spider_name) do
+        nil ->
+          {:error, :storage_worker_not_running}
+
+        pid ->
+          Crawly.RequestsStorage.Worker.inc(pid)
+      end
+
+    {:reply, resp, state}
+  end
+
+  def handle_call({:dec, spider_name}, _from, state = %{workers: workers}) do
+    resp =
+      case Map.get(workers, spider_name) do
+        nil ->
+          {:error, :storage_worker_not_running}
+
+        pid ->
+          Crawly.RequestsStorage.Worker.dec(pid)
+      end
+
+    {:reply, resp, state}
+  end
+
   def handle_call({:stats, spider_name}, _from, state) do
     msg =
       case Map.get(state.workers, spider_name) do
@@ -144,6 +196,19 @@ defmodule Crawly.RequestsStorage do
 
         pid ->
           Crawly.RequestsStorage.Worker.requests(pid)
+      end
+
+    {:reply, msg, state}
+  end
+
+  def handle_call({:working_stats, spider_name}, _from, state) do
+    msg =
+      case Map.get(state.workers, spider_name) do
+        nil ->
+          {:error, :storage_worker_not_running}
+
+        pid ->
+          Crawly.RequestsStorage.Worker.working_stats(pid)
       end
 
     {:reply, msg, state}
