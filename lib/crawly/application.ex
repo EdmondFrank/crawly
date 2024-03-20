@@ -6,8 +6,9 @@ defmodule Crawly.Application do
   use Application
 
   def start(_type, _args) do
+    storage_opts = Application.get_env(:crawly, :dets_simple_storage, [])
     # Start simple storage of crawly
-    Crawly.SimpleStorage.init()
+    Crawly.SimpleStorage.init(storage_opts)
     # Load spiders from SimpleStorage and SPIDERS_DIR
     Crawly.load_spiders()
 
